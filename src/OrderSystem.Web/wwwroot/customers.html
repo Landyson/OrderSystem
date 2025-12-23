@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zákazníci – OrderSystem</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Zákazníci</h1>
+    <nav>
+      <a href="/">Domů</a>
+      <a href="/products.html">Produkty</a>
+      <a href="/orders.html">Objednávky</a>
+      <a href="/import.html">Import</a>
+      <a href="/reports.html">Reporty</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Přidat zákazníka</h2>
+      <div class="row">
+        <input id="fn" placeholder="Jméno">
+        <input id="ln" placeholder="Příjmení">
+        <input id="em" placeholder="Email">
+        <input id="ph" placeholder="Telefon (volitelné)">
+        <button id="add">Přidat</button>
+      </div>
+      <div id="msg"></div>
+    </section>
+
+    <section style="margin-top:14px">
+      <h2>Seznam</h2>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Jméno</th><th>Email</th><th>Telefon</th><th>Akce</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/common.js"></script>
+  <script>
+    const msg = document.getElementById("msg");
+    let customersCache = [];
+    async function load() {
+      const data = await api("/api/customers");
+      customersCache = data;
+      const tb = document.getElementById("tbody");
+      tb.innerHTML = "";
+      data.forEach(c => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${c.id}</td>
+          <td>${c.firstName} ${c.lastName}</td>
+          <td>${c.email}</td>
+          <td>${c.phone ?? ""}</td>
+          <td>
+            <button class="secondary" onclick="edit(${c.id})">Upravit</button>
+            <button onclick="del(${c.id})">Smazat</button>
+          </td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    document.getElementById("add").onclick = async () => {
+      try {
+        await api("/api/customers", {
+          method: "POST",
+          body: JSON.stringify({
+            firstName: fn.value.trim(),
+            lastName: ln.value.trim(),
+            email: em.value.trim(),
+            phone: ph.value.trim() || null
+          })
+        });
+        showMsg(msg, "Zákazník uložen.", true);
+        fn.value = ln.value = em.value = ph.value = "";
+        await load();
+      } catch (e) {
+        showMsg(msg, e.message, false);
+      }
+    };
+
+    async function del(id) {
+      if (!confirm("Opravdu smazat zákazníka?")) return;
+      try {
+        await api("/api/customers/" + id, { method: "DELETE" });
+        await load();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function edit(id) {
+      const c = customersCache.find(x => x.id === id);
+      if (!c) { alert("Záznam zákazníka nenalezen. Zkus obnovit stránku (Ctrl+F5)."); return; }
+
+      let firstName = prompt("Jméno (prázdné = beze změny):", c.firstName);
+      if (firstName === null) return;
+      firstName = firstName.trim();
+      if (!firstName) firstName = c.firstName;
+
+      let lastName = prompt("Příjmení (prázdné = beze změny):", c.lastName);
+      if (lastName === null) return;
+      lastName = lastName.trim();
+      if (!lastName) lastName = c.lastName;
+
+      let email = prompt("Email (prázdné = beze změny):", c.email);
+      if (email === null) return;
+      email = email.trim();
+      if (!email) email = c.email;
+
+      let phone = prompt("Telefon (prázdné = beze změny):", c.phone ?? "");
+      if (phone === null) return;
+      phone = phone.trim();
+      if (!phone) phone = c.phone ?? null;
+
+      try {
+        await api("/api/customers/" + id, {
+          method: "PUT",
+          body: JSON.stringify({ id, firstName, lastName, email, phone })
+        });
+        await load();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>
