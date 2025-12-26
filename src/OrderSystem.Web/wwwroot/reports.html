@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reporty – OrderSystem</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Reporty</h1>
+    <nav>
+      <a href="/">Domů</a>
+      <a href="/customers.html">Zákazníci</a>
+      <a href="/products.html">Produkty</a>
+      <a href="/orders.html">Objednávky</a>
+      <a href="/import.html">Import</a>
+    </nav>
+  </header>
+
+  <main class="container">
+        <div id="msg"></div>
+<section class="card">
+      <h2>Top zákazníci (agregace přes customers + orders + order_items)</h2>
+      <button id="loadTop">Načíst</button>
+      <table>
+        <thead><tr><th>ID</th><th>Jméno</th><th>Objednávky</th><th>Utraceno</th></tr></thead>
+        <tbody id="top"></tbody>
+      </table>
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <h2>Prodeje produktů (view v_product_sales)</h2>
+      <button id="loadSales">Načíst</button>
+      <table>
+        <thead><tr><th>ID</th><th>Název</th><th>Kusů</th><th>Tržba</th></tr></thead>
+        <tbody id="sales"></tbody>
+      </table>
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <h2>Součty objednávek (view v_order_totals)</h2>
+      <button id="loadTotals">Načíst</button>
+      <table>
+        <thead><tr><th>Objednávka</th><th>Zákazník</th><th>Stav</th><th>Vytvořeno</th><th>Celkem</th></tr></thead>
+        <tbody id="totals"></tbody>
+      </table>
+    </section>
+  </main>
+  <script src="/common.js"></script>
+  <script>
+    const msgEl = document.getElementById("msg");
+
+    const btnTop = document.getElementById("loadTop");
+    const btnSales = document.getElementById("loadSales");
+    const btnTotals = document.getElementById("loadTotals");
+
+    const topBody = document.getElementById("top");
+    const salesBody = document.getElementById("sales");
+    const totalsBody = document.getElementById("totals");
+    
+    const safeMsg = (text, ok=true) => {
+      if (!msgEl) return;
+      showMsg(msgEl, text, ok);
+    };
+
+    const statusCz = (status) => {
+      const s = (status ?? "").toString().toLowerCase();
+      if (s === "paid") return "Zaplacená";
+      if (s === "new") return "Nová";
+      if (s === "cancelled") return "Zrušená";
+      return status;
+    };
+
+    btnTop.addEventListener("click", async () => {
+      try {
+        const data = await api("/api/reports/top-customers?limit=10");
+        topBody.innerHTML = data.map(r =>
+          `<tr>
+            <td>${r.customerId}</td>
+            <td>${r.customerName}</td>
+            <td>${r.ordersCount}</td>
+            <td>${r.totalSpent}</td>
+          </tr>`
+        ).join("");
+        safeMsg("Top zákazníci načteni.", true);
+      } catch (e) {
+        safeMsg(e.message, false);
+      }
+    });
+
+    btnSales.addEventListener("click", async () => {
+      try {
+        const data = await api("/api/reports/product-sales");
+        salesBody.innerHTML = data.map(r =>
+          `<tr>
+            <td>${r.productId}</td>
+            <td>${r.name}</td>
+            <td>${r.qtySold}</td>
+            <td>${r.revenue}</td>
+          </tr>`
+        ).join("");
+        safeMsg("Prodeje produktů načteny.", true);
+      } catch (e) {
+        safeMsg(e.message, false);
+      }
+    });
+
+    btnTotals.addEventListener("click", async () => {
+      try {
+        const data = await api("/api/reports/order-totals");
+        totalsBody.innerHTML = data.map(r =>
+          `<tr>
+            <td>${r.orderId}</td>
+            <td>${r.customerId}</td>
+            <td>${r.customerName}</td>
+            <td>${statusCz(r.status)}</td>
+            <td>${r.createdAt}</td>
+            <td>${r.totalAmount}</td>
+          </tr>`
+        ).join("");
+        safeMsg("Součty objednávek načteny.", true);
+      } catch (e) {
+        safeMsg(e.message, false);
+      }
+    });
+  </script>
+</body>
+</html>
