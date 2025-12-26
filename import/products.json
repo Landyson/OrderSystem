@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Hrnek",
+    "price": 199.0,
+    "stock": 40,
+    "rating": 4.4,
+    "isActive": true
+  },
+  {
+    "name": "Láhev",
+    "price": 299.0,
+    "stock": 25,
+    "rating": 4.1,
+    "isActive": true
+  }
+]

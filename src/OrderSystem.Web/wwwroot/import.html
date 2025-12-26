@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Import – OrderSystem</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Import</h1>
+    <nav>
+      <a href="/">Domů</a>
+      <a href="/customers.html">Zákazníci</a>
+      <a href="/products.html">Produkty</a>
+      <a href="/orders.html">Objednávky</a>
+      <a href="/reports.html">Reporty</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Import zákazníků (CSV)</h2>
+      <p>CSV musí mít hlavičku: <code>first_name,last_name,email,phone</code></p>
+      <input type="file" id="csv" accept=".csv">
+      <button id="impCsv">Importovat</button>
+      <div id="msg1"></div>
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <h2>Import produktů (JSON)</h2>
+      <p>JSON pole objektů: name, price, stock, isActive, rating (hodnocení)</p>
+      <input type="file" id="json" accept=".json">
+      <button id="impJson">Importovat</button>
+      <div id="msg2"></div>
+    </section>
+  </main>
+
+  <script src="/common.js"></script>
+  <script>
+    async function upload(url, file) {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(url, { method: "POST", body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    impCsv.onclick = async () => {
+      try {
+        if (!csv.files[0]) throw new Error("Vyber CSV soubor.");
+        const out = await upload("/api/import/customers", csv.files[0]);
+        showMsg(msg1, "Hotovo. Zpracováno řádků: " + out.inserted, true);
+      } catch (e) {
+        showMsg(msg1, e.message, false);
+      }
+    };
+
+    impJson.onclick = async () => {
+      try {
+        if (!json.files[0]) throw new Error("Vyber JSON soubor.");
+        const out = await upload("/api/import/products", json.files[0]);
+        showMsg(msg2, "Hotovo. Zpracováno záznamů: " + out.inserted, true);
+      } catch (e) {
+        showMsg(msg2, e.message, false);
+      }
+    };
+  </script>
+</body>
+</html>
