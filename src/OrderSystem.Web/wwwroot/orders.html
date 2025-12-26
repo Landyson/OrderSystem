@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Objednávky – OrderSystem</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Objednávky</h1>
+    <nav>
+      <a href="/">Domů</a>
+      <a href="/customers.html">Zákazníci</a>
+      <a href="/products.html">Produkty</a>
+      <a href="/import.html">Import</a>
+      <a href="/reports.html">Reporty</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Vytvořit objednávku (transakčně)</h2>
+      <div class="row">
+        <select id="customer"></select>
+        <select id="product"></select>
+        <input id="qty" type="number" step="1" value="1" min="1" style="width:120px">
+        <button class="secondary" id="addItem">Přidat položku</button>
+      </div>
+
+      <div style="margin-top:10px">
+        <textarea id="note" placeholder="Poznámka (volitelné)" style="width:100%;min-height:70px"></textarea>
+      </div>
+
+      <h3>Položky</h3>
+      <table>
+        <thead><tr><th>Produkt</th><th>Množství</th><th>Akce</th></tr></thead>
+        <tbody id="items"></tbody>
+      </table>
+
+      <h3>Platba (volitelné)</h3>
+      <div class="row">
+        <input id="amount" type="number" step="0.01" placeholder="Částka (např. 199.00)">
+        <input id="provider" placeholder="Poskytovatel (např. Card)">
+        <label style="display:flex;align-items:center;gap:8px">
+          <input id="paid" type="checkbox"> Zaplaceno
+        </label>
+      </div>
+
+      <div style="margin-top:10px">
+        <button id="create">Vytvořit objednávku</button>
+      </div>
+      <div id="msg"></div>
+    </section>
+
+    <section style="margin-top:14px">
+      <h2>Seznam objednávek</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Zákazník ID</th><th>Stav</th><th>Zaplaceno</th><th>Vytvořeno</th><th>Akce</th></tr></thead>
+        <tbody id="orders"></tbody>
+      </table>
+    </section>
+  </main>
+  <script src="/common.js"></script>
+  <script>
+    const msg = document.getElementById("msg");
+    
+    const customerEl = document.getElementById("customer");
+    const productEl  = document.getElementById("product");
+    const qtyEl      = document.getElementById("qty");
+    const noteEl     = document.getElementById("note");
+    const amountEl   = document.getElementById("amount");
+    const providerEl = document.getElementById("provider");
+    const paidEl     = document.getElementById("paid");
+
+    const itemBody   = document.getElementById("items");
+    const ordersBody = document.getElementById("orders");
+
+    const items = [];
+    let productsCache = [];
+
+    function renderItems() {
+      itemBody.innerHTML = "";
+      items.forEach((it, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${it.productName}</td>
+          <td>${it.quantity}</td>
+          <td><button onclick="removeItem(${idx})">Smazat</button></td>`;
+        itemBody.appendChild(tr);
+      });
+    }
+
+    window.removeItem = (idx) => { items.splice(idx, 1); renderItems(); };
+
+    async function loadSelects() {
+      const customers = await api("/api/customers");
+      customerEl.innerHTML = customers
+        .map(c => `<option value="${c.id}">${c.id} – ${c.firstName} ${c.lastName}</option>`)
+        .join("");
+
+      const products = await api("/api/products");
+      // Inactive products should not be orderable -> filter in UI
+      const activeProducts = products.filter(p => (p.isActive === true) || (p.isActive === 1));
+      productsCache = activeProducts;
+      productEl.innerHTML = activeProducts
+        .map(p => `<option value="${p.id}">${p.id} – ${p.name} (stock:${p.stock})</option>`)
+        .join("");
+    }
+
+    document.getElementById("addItem").onclick = () => {
+      const pid = parseInt(productEl.value, 10);
+      const q   = parseInt(qtyEl.value, 10);
+
+      if (!pid || pid <= 0) { showMsg(msg, "Vyber produkt.", false); return; }
+      if (!q || q <= 0) { showMsg(msg, "Množství musí být ≥ 1.", false); return; }
+
+      const p = productsCache.find(x => x.id === pid);
+      items.push({ productId: pid, quantity: q, productName: p ? p.name : ("#" + pid) });
+      renderItems();
+    };
+
+    const statusToText = (s) => {
+      if (typeof s === "string") return s.toUpperCase();
+      if (s === 1) return "PAID";
+      if (s === 2) return "CANCELLED";
+      return "NEW";
+    };
+
+    const statusToCz = (status) => {
+      const s = (status || "").toString().toUpperCase();
+      if (s === "PAID") return "Zaplacená";
+      if (s === "CANCELLED") return "Zrušená";
+      return "Nová";
+    };
+
+    async function loadOrders() {
+      const data = await api("/api/orders");
+      ordersBody.innerHTML = "";
+
+      data.forEach(o => {
+        const status = statusToText(o.status);
+        const isPaid = status === "PAID";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${o.id}</td>
+          <td>${o.customerId}</td>
+          <td>${statusToCz(status)}</td>
+          <td>
+            <input type="checkbox" ${isPaid ? "checked" : ""}
+                   onchange="setPaid(${o.id}, this.checked)">
+          </td>
+          <td>${o.createdAt}</td>
+          <td><button class="secondary" onclick="delOrder(${o.id})">Smazat</button></td>`;
+        ordersBody.appendChild(tr);
+      });
+    }
+    
+    window.setPaid = async (id, paidNow) => {
+      try {
+        await api(`/api/orders/${id}/paid`, {
+          method: "PUT",
+          body: JSON.stringify({ paid: paidNow })
+        });
+        showMsg(msg, paidNow ? "Objednávka označena jako zaplacená." : "Objednávka je nezaplacená.", true);
+        await loadOrders();
+      } catch (e) {
+        showMsg(msg, e.message, false);
+        await loadOrders(); // revert from DB
+      }
+    };
+
+    async function delOrder(id) {
+      if (!confirm(`Opravdu smazat objednávku #${id}?`)) return;
+      try {
+        await api("/api/orders/" + id, { method: "DELETE" });
+        await loadOrders();
+        await loadSelects();
+        showMsg(msg, "Objednávka smazána.", true);
+      } catch (e) {
+        showMsg(msg, e.message, false);
+      }
+    }
+
+    document.getElementById("create").onclick = async () => {
+      try {
+        const customerId = parseInt(customerEl.value, 10);
+        if (!customerId || customerId <= 0) throw new Error("Vyber zákazníka.");
+        if (items.length === 0) throw new Error("Přidej alespoň jednu položku.");
+
+        let payment = null;
+        const amountStr = (amountEl.value || "").trim();
+        const providerStr = (providerEl.value || "").trim();
+        const paidChecked = !!paidEl.checked;
+
+        if (paidChecked || amountStr !== "" || providerStr !== "") {
+          const amountVal = amountStr === "" ? 0 : parseFloat(amountStr);
+          if (Number.isNaN(amountVal) || amountVal < 0) throw new Error("Částka musí být číslo ≥ 0.");
+          payment = { amount: amountVal, paid: paidChecked, provider: providerStr === "" ? null : providerStr };
+        }
+
+        await api("/api/orders", {
+          method: "POST",
+          body: JSON.stringify({
+            customerId,
+            note: (noteEl.value || "").trim() || null,
+            items: items.map(x => ({ productId: x.productId, quantity: x.quantity })),
+            payment
+          })
+        });
+
+        showMsg(msg, "Objednávka vytvořena.", true);
+        
+        items.splice(0, items.length);
+        renderItems();
+        noteEl.value = "";
+        amountEl.value = "";
+        providerEl.value = "";
+        paidEl.checked = false;
+
+        await loadOrders();
+        await loadSelects(); 
+      } catch (e) {
+        showMsg(msg, e.message, false);
+      }
+    };
+    
+    loadSelects()
+      .then(loadOrders)
+      .catch(e => showMsg(msg, e.message, false));
+  </script>
+</body>
+</html>
