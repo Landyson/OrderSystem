@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Produkty – OrderSystem</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Produkty</h1>
+    <nav>
+      <a href="/">Domů</a>
+      <a href="/customers.html">Zákazníci</a>
+      <a href="/orders.html">Objednávky</a>
+      <a href="/import.html">Import</a>
+      <a href="/reports.html">Reporty</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Přidat produkt</h2>
+      <div class="row">
+                <input id="name" placeholder="Název">
+        <input id="price" placeholder="Cena" type="number" step="0.01">
+        <input id="stock" placeholder="Sklad" type="number" step="1">
+        <input id="rating" placeholder="Hodnocení (float, vol.)" type="number" step="0.1">
+        <select id="active">
+          <option value="true">Aktivní</option>
+          <option value="false">Neaktivní</option>
+        </select>
+        <button id="add">Přidat</button>
+      </div>
+      <div id="msg"></div>
+    </section>
+
+    <section style="margin-top:14px">
+      <h2>Seznam</h2>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Název</th><th>Cena</th><th>Sklad</th><th>Aktivní</th><th>Hodnocení</th><th>Akce</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </section>
+  </main>
+  <script src="/common.js"></script>
+  <script>
+    const msg = document.getElementById("msg");
+    let productsCache = [];
+    
+    const nameEl = document.getElementById("name");
+    const priceEl = document.getElementById("price");
+    const stockEl = document.getElementById("stock");
+    const ratingEl = document.getElementById("rating");
+    const activeEl = document.getElementById("active");
+
+    async function load() {
+      const data = await api("/api/products");
+      productsCache = data;
+      const tb = document.getElementById("tbody");
+      tb.innerHTML = "";
+      data.forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${p.id}</td>
+          <td>${p.name}</td>
+          <td>${p.price}</td>
+          <td>${p.stock}</td>
+          <td>${p.isActive}</td>
+          <td>${p.rating ?? ""}</td>
+          <td>
+            <button class="secondary" onclick="edit(${p.id})">Upravit</button>
+            <button onclick="del(${p.id})">Smazat</button>
+          </td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    document.getElementById("add").onclick = async () => {
+      try {
+        await api("/api/products", {
+          method: "POST",
+          body: JSON.stringify({
+            name: nameEl.value.trim(),
+            price: parseFloat(priceEl.value),
+            stock: parseInt(stockEl.value || "0", 10),
+            isActive: activeEl.value === "true",
+            rating: ratingEl.value ? parseFloat(ratingEl.value) : null
+          })
+        });
+
+        showMsg(msg, "Produkt uložen.", true);
+
+                nameEl.value = "";
+        priceEl.value = "";
+        stockEl.value = "";
+        ratingEl.value = "";
+        activeEl.value = "true";
+
+        await load();
+      } catch (e) {
+        showMsg(msg, e.message, false);
+      }
+    };
+
+    async function del(id) {
+      if (!confirm("Opravdu smazat produkt?")) return;
+      try {
+        await api("/api/products/" + id, { method: "DELETE" });
+        await load();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function edit(id) {
+      const p = productsCache.find(x => x.id === id);
+      if (!p) { alert("Záznam produktu nenalezen. Zkus obnovit stránku (Ctrl+F5)."); return; }
+
+      let name = prompt("Název (prázdné = beze změny):", p.name);
+      if (name === null) return;
+      name = name.trim();
+      if (!name) name = p.name;
+
+      let priceStr = prompt("Cena (prázdné = beze změny):", String(p.price));
+      if (priceStr === null) return;
+      priceStr = priceStr.trim();
+      const price = priceStr ? parseFloat(priceStr) : p.price;
+      if (Number.isNaN(price)) { alert("Cena musí být číslo."); return; }
+
+      let stockStr = prompt("Sklad (prázdné = beze změny):", String(p.stock));
+      if (stockStr === null) return;
+      stockStr = stockStr.trim();
+      const stock = stockStr ? parseInt(stockStr, 10) : p.stock;
+      if (Number.isNaN(stock)) { alert("Sklad musí být celé číslo."); return; }
+
+      let activeStr = prompt("Aktivní? true/false (prázdné = beze změny):", String(p.isActive));
+      if (activeStr === null) return;
+      activeStr = activeStr.trim().toLowerCase();
+
+      let isActive = p.isActive;
+      if (activeStr) {
+        if (["true","1","yes","ano"].includes(activeStr)) isActive = true;
+        else if (["false","0","no","ne"].includes(activeStr)) isActive = false;
+        else { alert("Aktivní musí být true/false."); return; }
+      }
+
+      let ratingStr = prompt("Hodnocení (prázdné = beze změny):", p.rating ?? "");
+      if (ratingStr === null) return;
+      ratingStr = ratingStr.trim();
+      let rating = p.rating ?? null;
+      if (ratingStr) {
+        const r = parseFloat(ratingStr);
+        if (Number.isNaN(r)) { alert("Hodnocení musí být číslo."); return; }
+        rating = r;
+      }
+
+      try {
+        await api("/api/products/" + id, {
+          method: "PUT",
+          body: JSON.stringify({ id, name, price, stock, isActive, rating })
+        });
+        await load();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>
