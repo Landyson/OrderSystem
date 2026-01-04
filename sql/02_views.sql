@@ -1,16 +1,5 @@
-/*
-  ordersystem – db views (mysql)
-  author: <doplň>
-  date: <doplň>
-
-  povinné 2 view:
-  - v_order_totals
-  - v_product_sales
-*/
-
 use ordersystem;
 
--- view 1: součet objednávky (agregace přes 3 tabulky: orders + order_items + customers)
 create or replace view v_order_totals as
 select
   o.id as order_id,
@@ -24,7 +13,6 @@ join customers c on c.id = o.customer_id
 left join order_items oi on oi.order_id = o.id
 group by o.id, o.customer_id, customer_name, o.state, o.created_at;
 
--- view 2: prodeje produktů (agregace přes 3+ tabulky: products + order_items + orders)
 create or replace view v_product_sales as
 select
   p.id as product_id,  p.name,
