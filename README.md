@@ -54,8 +54,8 @@ Na Windows v rootu projektu:
 scripts\run.bat
 ```
 Pak otevři:
-- UI: `http://localhost:5080`
-- API Swagger: `http://localhost:5080/swagger`
+- UI: `http://localhost:5000`
+- API Swagger: `http://localhost:5000/swagger`
 
 ### Varianta B – publish (kdyby na školním PC nebyl nainstalovaný .NET)
 ```bat
