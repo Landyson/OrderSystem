@@ -1,17 +1,5 @@
-/*
-  ordersystem – db schema (mysql)
-  author: <doplň>
-  date: <doplň>
-
-  splňuje:
-  - 5+ tabulek (customers, products, orders, order_items, payments)
-  - m:n vazba (orders <-> products přes order_items)
-  - datové typy: float, bool, "enum" ekvivalent přes check, string, datetime
-*/
-
 use ordersystem;
 
--- zákazníci
 create table if not exists customers (
   id int auto_increment primary key,
   first_name varchar(80) not null,
@@ -21,23 +9,21 @@ create table if not exists customers (
   created_at datetime not null default current_timestamp
 );
 
--- produkty
 create table if not exists products (
   id int auto_increment primary key,
   name varchar(160) not null,
   price decimal(10,2) not null,
   stock int not null default 0,
-  is_active tinyint(1) not null default 1, -- bool
-  rating float null,                        -- float
+  is_active tinyint(1) not null default 1, 
+  rating float null,                        
   created_at datetime not null default current_timestamp,
   constraint uq_products_name unique (name)
 );
 
--- objednávky
 create table if not exists orders (
   id int auto_increment primary key,
   customer_id int not null,
-  state varchar(20) not null check (state in ('new','paid')), -- enum ekvivalent
+  state varchar(20) not null check (state in ('new','paid')), 
   note varchar(500) null,
   created_at datetime not null default current_timestamp,
   constraint fk_orders_customer foreign key (customer_id)
@@ -45,7 +31,6 @@ create table if not exists orders (
     on delete restrict on update cascade
 );
 
--- položky objednávky (m:n)
 create table if not exists order_items (
   order_id int not null,
   product_id int not null,
@@ -60,12 +45,11 @@ create table if not exists order_items (
     on delete restrict on update cascade
 );
 
--- platby
 create table if not exists payments (
   id int auto_increment primary key,
   order_id int not null,
   amount decimal(10,2) not null,
-  paid tinyint(1) not null default 0, -- bool
+  paid tinyint(1) not null default 0, 
   paid_at datetime null,
   provider varchar(60) null,
   constraint fk_payments_order foreign key (order_id)
@@ -73,7 +57,6 @@ create table if not exists payments (
     on delete cascade on update cascade
 );
 
--- seed (pár záznamů pro rychlý start)
 insert into customers(first_name,last_name,email,phone) values
 ('Jan','Novák','jan.novak@example.com','777111222')
 on duplicate key update email=email;
