@@ -48,8 +48,8 @@ Na Windows v rootu projektu:
 ```bat
 scripts\run.bat
 ```
-Pokude zůstane příkazová řádka otevřená vše je správně a pokračujte na krok 4
-Příklad správného zapnutí:
+Pokude zůstane příkazová řádka otevřená vše je správně
+- Příklad správného zapnutí:
 <img width="1100" height="286" alt="image" src="https://github.com/user-attachments/assets/68abe676-fef8-46f2-a3f3-b00afb710012" />
 
 Pak otevři:
