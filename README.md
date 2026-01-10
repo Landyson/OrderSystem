@@ -23,28 +23,23 @@
 - `/scripts` – pomocné skripty pro spuštění/publish
 
 ## 1) Příprava databáze (MySQL Workbench)
-1. Spusť MySQL Server a přihlas se přes Workbench.
+1. Spusť MySQL Server a přihlas se přes Workbench na root.
 2. Vytvoř DB (např. `ordersystem`):
-   ```sql
-   CREATE DATABASE ordersystem CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
-3. Otevři a spusť skripty:
-   - `sql/01_schema.sql`
-   - `sql/02_views.sql`
-
-> Pokud nechceš vytvářet uživatele, můžeš použít root účet. V testovacích scénářích ale nedoporučuju dávat root heslo do repa – použij `appsettings.example.json`.
+3. Otevři a spusť skript přes blesk vlevo:
+   - `sql/db.sql`
+4. Vytvořte nové conncetion v MySQL Workbench a username nastavte na `testUserDB`
 
 ## 2) Konfigurace aplikace
 V souboru:
 - `src/OrderSystem.Web/appsettings.json`
 
-Uprav:
-- `ConnectionStrings:MySql`
-- `App:BaseUrl` (volitelné)
+Zkontrolujte:
+- User je: `testUserDB`
+- Password je: `1234`
 
 Příklad connection stringu:
 ```
-server=localhost;port=3306;database=ordersystem;user=root;password=YOUR_PASSWORD;TreatTinyAsBoolean=true;
+server=localhost;port=3306;database=ordersystem;user=testUserDB;password=1234;TreatTinyAsBoolean=true;
 ```
 
 ## 3) Spuštění (bez IDE)
